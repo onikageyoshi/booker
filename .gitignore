@@ -1,2 +1,108 @@
-venv
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Django stuff:
+*.log
+*.pot
+*.pyc
+*.pyo
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+static/
+__pycache__/
+
+# If using Cloudinary local cache
+.cloudinary/
+
+# Django migrations
+*/migrations/*.py
+!*/migrations/__init__.py
+
+# Pytest
+.cache/
+.pytest_cache/
+
+# IDEs
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment variables
 .env
+.env.*
+*.env
+
+# Backup files
+*.bak
+*.swp
+*~
+
+# Logs
+*.log
+logs/
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+*.py,cover
+nosetests.xml
+.junit.xml
+*.lcov
+
+# Celery beat schedule file
+celerybeat-schedule
+
+# mypy
+.mypy_cache/
+
+# Pyre type checker
+.pyre/
+
+# Pylint
+pylint.log
+
+# Rope project settings
+.ropeproject/
+
+# VS Code settings folder
+.vscode/

@@ -3,21 +3,12 @@ from pathlib import Path
 from datetime import timedelta
 import cloudinary
 
-# -------------------------------
-# Base paths
-# -------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# -------------------------------
-# Security
-# -------------------------------
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-secret-key-for-dev")
 DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "*").split(",")
 
-# -------------------------------
-# Installed apps
-# -------------------------------
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -35,7 +26,6 @@ INSTALLED_APPS = [
     "cloudinary_storage",
     "django_ratelimit",
 
-    # Project apps
     "apps.user",
     "apps.apartments",
     "apps.bookings",
@@ -44,9 +34,6 @@ INSTALLED_APPS = [
     "apps.notifications",
 ]
 
-# -------------------------------
-# Middleware
-# -------------------------------
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
@@ -77,19 +64,28 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "core.wsgi.application"
 
-# -------------------------------
-# Database
-# -------------------------------
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
     }
 }
+# DATABASES = {
+#     "default": {
+#         "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.sqlite3"),
+#         "NAME": os.getenv("DB_NAME", BASE_DIR / "db.sqlite3"),
+#         "USER": os.getenv("DB_USER", ""),
+#         "PASSWORD": os.getenv("DB_PASSWORD", ""),
+#         "HOST": os.getenv("DB_HOST", ""),
+#         "PORT": os.getenv("DB_PORT", ""),
+#         "OPTIONS": {
+#             "sslmode": os.getenv("DB_SSLMODE", "prefer"),
+#             "channel_binding": os.getenv("DB_CHANNEL_BINDING", "prefer"),
+#         } if os.getenv("DB_ENGINE") == "django.db.backends.postgresql" else {},
+#     }
+# }
 
-# -------------------------------
-# Auth
-# -------------------------------
+
 AUTH_USER_MODEL = "user.User"
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -99,17 +95,11 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# -------------------------------
-# Internationalization
-# -------------------------------
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-# -------------------------------
-# Static & Media
-# -------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "static"
 
@@ -119,14 +109,8 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# -------------------------------
-# CORS
-# -------------------------------
 CORS_ALLOW_ALL_ORIGINS = True
 
-# -------------------------------
-# DRF Config
-# -------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -147,18 +131,13 @@ REST_FRAMEWORK = {
     },
 }
 
-# -------------------------------
-# Simple JWT
-# -------------------------------
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# -------------------------------
-# DRF Spectacular
-# -------------------------------
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "Apartment Booking API",
     "DESCRIPTION": "API for single-owner apartment booking platform",
@@ -171,9 +150,6 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
-# -------------------------------
-# Redis / Cache
-# -------------------------------
 REDIS_ENABLED = os.getenv("REDIS_ENABLED", "True") == "True"
 REDIS_URL = os.getenv(
     "REDIS_URL",
@@ -196,9 +172,8 @@ RATELIMIT_USE_CACHE = "default"
 RATELIMIT_ENABLE = True
 IDEMPOTENCY_TIMEOUT = 300
 
-# -------------------------------
-# Email
-# -------------------------------
+
+
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
@@ -206,9 +181,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 
-# -------------------------------
-# Cloudinary
-# -------------------------------
+
 cloudinary.config(
     cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
     api_key=os.getenv("CLOUDINARY_API_KEY"),

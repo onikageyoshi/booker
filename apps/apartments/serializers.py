@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import (
-    Apartment, ApartmentImage, Amenity, ApartmentAmenity,
+    Apartment, ApartmentImage, Amenity, 
     ApartmentPricing, ApartmentAddress, ApartmentAvailability,
     ApartmentRule
 )

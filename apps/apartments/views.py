@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
-from .models import Apartment, ApartmentImage
+from .models import Apartment, ApartmentImage, Amenity
 from .serializers import ApartmentSerializer, ApartmentImageSerializer
 from .utils import upload_apartment_image  # Cloudinary upload function
 
@@ -20,10 +20,19 @@ class ApartmentListCreateView(generics.ListCreateAPIView):
         responses={201: ApartmentSerializer}
     )
     def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+        data = request.data.copy()
+        amenities_ids = data.pop("amenities", [])
 
-    def perform_create(self, serializer):
-        serializer.save(host=self.request.user)
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        apartment = serializer.save(host=request.user)
+
+        # Assign amenities
+        if amenities_ids:
+            amenities = Amenity.objects.filter(id__in=amenities_ids)
+            apartment.amenities.set(amenities)
+
+        return Response(ApartmentSerializer(apartment).data, status=status.HTTP_201_CREATED)
 
 
 class ApartmentDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -44,14 +53,26 @@ class ApartmentDetailView(generics.RetrieveUpdateDestroyAPIView):
         apartment = self.get_object()
         if apartment.host != request.user:
             return Response({"error": "Not allowed"}, status=403)
-        return super().put(request, *args, **kwargs)
+
+        data = request.data.copy()
+        amenities_ids = data.pop("amenities", [])
+
+        serializer = self.get_serializer(apartment, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        apartment = serializer.save()
+
+        # Update amenities
+        if amenities_ids:
+            amenities = Amenity.objects.filter(id__in=amenities_ids)
+            apartment.amenities.set(amenities)
+
+        return Response(ApartmentSerializer(apartment).data, status=status.HTTP_200_OK)
 
     def delete(self, request, *args, **kwargs):
         apartment = self.get_object()
         if apartment.host != request.user:
             return Response({"error": "Not allowed"}, status=403)
         return super().delete(request, *args, **kwargs)
-
 
 
 class ApartmentImageListCreateView(generics.ListCreateAPIView):
