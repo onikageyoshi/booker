@@ -1,14 +1,16 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from cloudinary.models import CloudinaryField
+from django.utils import timezone
 
 User = get_user_model()
-
 
 CURRENCY = (
     ("GBP", "British Pound"),
     ("USD", "US Dollar"),
     ("EUR", "Euro")
 )
+
 
 class Amenity(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -23,6 +25,17 @@ class Apartment(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
 
+    # Cloudinary image field with a default placeholder
+    image = CloudinaryField(
+        resource_type='auto',
+        folder='apartments',
+        null=True,
+        blank=True,
+
+    )
+    is_cover = models.BooleanField(default=False)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
     property_type = models.CharField(
         max_length=50,
         choices=[
@@ -31,7 +44,8 @@ class Apartment(models.Model):
             ('entire_home', 'Entire Home'),
             ('studio', 'Studio'),
             ('villa', 'Villa'),
-        ]
+        ],
+        default='apartment'
     )
 
     total_bedrooms = models.PositiveIntegerField(default=1)
@@ -50,24 +64,12 @@ class Apartment(models.Model):
         return self.title
 
 
-class ApartmentImage(models.Model):
-    apartment = models.ForeignKey(Apartment, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='apartments/')
-    is_cover = models.BooleanField(default=False)
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Image for {self.apartment.title}"
-
-
 class ApartmentPricing(models.Model):
     apartment = models.OneToOneField(Apartment, on_delete=models.CASCADE, related_name='pricing')
-
     price_per_night = models.DecimalField(max_digits=10, decimal_places=2)
     cleaning_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     service_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     weekend_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-
     currency = models.CharField(max_length=10, default='GBP', choices=CURRENCY)
 
     def __str__(self):
@@ -76,7 +78,6 @@ class ApartmentPricing(models.Model):
 
 class ApartmentAddress(models.Model):
     apartment = models.OneToOneField(Apartment, on_delete=models.CASCADE, related_name='address')
-
     country = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
     city = models.CharField(max_length=100)

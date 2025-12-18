@@ -1,15 +1,9 @@
 from rest_framework import serializers
 from .models import (
-    Apartment, ApartmentImage, Amenity, 
+    Apartment, Amenity,
     ApartmentPricing, ApartmentAddress, ApartmentAvailability,
     ApartmentRule
 )
-
-
-class ApartmentImageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ApartmentImage
-        fields = ['id', 'image', 'is_cover', 'uploaded_at']
 
 
 class AmenitySerializer(serializers.ModelSerializer):
@@ -36,9 +30,7 @@ class ApartmentPricingSerializer(serializers.ModelSerializer):
 class ApartmentAddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = ApartmentAddress
-        fields = [
-            'country', 'state', 'city', 'street'
-        ]
+        fields = ['country', 'state', 'city', 'street']
 
 
 class ApartmentAvailabilitySerializer(serializers.ModelSerializer):
@@ -48,7 +40,6 @@ class ApartmentAvailabilitySerializer(serializers.ModelSerializer):
 
 
 class ApartmentSerializer(serializers.ModelSerializer):
-    images = ApartmentImageSerializer(many=True, read_only=True)
     pricing = ApartmentPricingSerializer(read_only=True)
     address = ApartmentAddressSerializer(read_only=True)
     apartment_amenities = serializers.SerializerMethodField()
@@ -62,13 +53,16 @@ class ApartmentSerializer(serializers.ModelSerializer):
             'total_bedrooms', 'total_bathrooms', 'max_guests',
             'is_active', 'is_verified',
             'created_at', 'updated_at',
-
-            'images', 'pricing', 'address',
-            'apartment_amenities', 'rules', 'availability'
+            'apartment_amenities', 'rules', 'availability',
+            'image', 'is_cover', 'uploaded_at', 'pricing', 'address'
         ]
 
     def get_apartment_amenities(self, obj):
-        return AmenitySerializer(
-            [a.amenity for a in obj.apartment_amenities.all()],
-            many=True
-        ).data
+        # Corrected to use the proper related name
+        return AmenitySerializer(obj.amenities.all(), many=True).data
+
+    def validate_image(self, value):
+        # CloudinaryField returns a file object in DRF, so content_type check works
+        if hasattr(value, 'content_type') and not value.content_type.startswith('image/'):
+            raise serializers.ValidationError("Only image files are allowed.")
+        return value

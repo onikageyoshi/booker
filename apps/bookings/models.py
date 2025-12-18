@@ -2,9 +2,8 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 import uuid
-
-from apps.apartments.models import Apartment
-
+from apps.apartments.models import Apartment, ApartmentPricing
+from decimal import Decimal
 
 class Booking(models.Model):
     STATUS_CHOICES = [
@@ -28,12 +27,11 @@ class Booking(models.Model):
     check_out = models.DateField()
     nights = models.PositiveIntegerField()
     guests_count = models.PositiveIntegerField(default=1)
-    total_price = models.DecimalField(max_digits=12, decimal_places=2)
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default="unpaid")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    # optional: reference to external payment provider
     provider_transaction_id = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
@@ -44,3 +42,13 @@ class Booking(models.Model):
 
     def is_active(self):
         return self.status in ("pending", "confirmed")
+
+    def save(self, *args, **kwargs):
+        # Automatically calculate total_price if not set
+        if not self.total_price:
+            try:
+                pricing = self.apartment.pricing
+                self.total_price = Decimal(pricing.price_per_night) * self.nights + Decimal(pricing.cleaning_fee) + Decimal(pricing.service_fee)
+            except ApartmentPricing.DoesNotExist:
+                self.total_price = Decimal('0.00')
+        super().save(*args, **kwargs)

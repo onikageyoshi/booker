@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions, serializers, status
+from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
 from django.shortcuts import get_object_or_404
@@ -18,7 +18,6 @@ class IsBookingGuestOrHost(permissions.BasePermission):
 class ApartmentBookingListCreateView(generics.ListCreateAPIView):
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    queryset = Booking.objects.none()
 
     def get_queryset(self):
         apartment_id = self.kwargs.get("apartment_id")
@@ -52,7 +51,7 @@ class BookingDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Booking.objects.all()
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticated, IsBookingGuestOrHost]
-    lookup_field = "id"  
+    lookup_field = "id"
 
     @swagger_auto_schema(responses={200: BookingSerializer})
     def get(self, request, *args, **kwargs):
