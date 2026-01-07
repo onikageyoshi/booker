@@ -3,7 +3,7 @@ from pathlib import Path
 from datetime import timedelta
 import cloudinary
 
-from dotenv import load_dotenv  # <-- add this
+from dotenv import load_dotenv  
 
 load_dotenv() 
 
@@ -21,7 +21,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
-    # Third-party apps
+
     "rest_framework",
     "corsheaders",
     "drf_spectacular",
@@ -68,26 +68,27 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "core.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
-}
 # DATABASES = {
 #     "default": {
-#         "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.sqlite3"),
-#         "NAME": os.getenv("DB_NAME", BASE_DIR / "db.sqlite3"),
-#         "USER": os.getenv("DB_USER", ""),
-#         "PASSWORD": os.getenv("DB_PASSWORD", ""),
-#         "HOST": os.getenv("DB_HOST", ""),
-#         "PORT": os.getenv("DB_PORT", ""),
-#         "OPTIONS": {
-#             "sslmode": os.getenv("DB_SSLMODE", "prefer"),
-#             "channel_binding": os.getenv("DB_CHANNEL_BINDING", "prefer"),
-#         } if os.getenv("DB_ENGINE") == "django.db.backends.postgresql" else {},
+#         "ENGINE": "django.db.backends.sqlite3",
+#         "NAME": BASE_DIR / "db.sqlite3",
 #     }
 # }
+
+DATABASES = {
+    "default": {
+        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.sqlite3"),
+        "NAME": os.getenv("DB_NAME", BASE_DIR / "db.sqlite3"),
+        "USER": os.getenv("DB_USER", ""),
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),
+        "HOST": os.getenv("DB_HOST", ""),
+        "PORT": os.getenv("DB_PORT", ""),
+        "OPTIONS": {
+            "sslmode": os.getenv("DB_SSLMODE", "prefer"),
+            "channel_binding": os.getenv("DB_CHANNEL_BINDING", "prefer"),
+        } if os.getenv("DB_ENGINE") == "django.db.backends.postgresql" else {},
+    }
+}
 
 
 AUTH_USER_MODEL = "user.User"
@@ -175,6 +176,11 @@ CACHES = {
 RATELIMIT_USE_CACHE = "default"
 RATELIMIT_ENABLE = True
 IDEMPOTENCY_TIMEOUT = 300
+
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
+
 
 
 

@@ -4,6 +4,7 @@ import cloudinary.uploader
 import cloudinary.api
 
 
+
 cloudinary.config(
     cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
     api_key=os.getenv("CLOUDINARY_API_KEY"),
@@ -18,4 +19,9 @@ def upload_apartment_image(file, folder="apartments"):
         return result.get("secure_url")
     except Exception as e:
         raise Exception(f"Cloudinary upload failed: {e}")
+    
+
+
+
+
 

@@ -6,6 +6,13 @@ from .models import Apartment, Amenity
 from .serializers import ApartmentSerializer
 
 
+
+from django.core.cache import cache
+from .models import Apartment
+
+
+
+
 class ApartmentListCreateView(generics.ListCreateAPIView):
     queryset = Apartment.objects.filter(is_active=True)
     serializer_class = ApartmentSerializer
