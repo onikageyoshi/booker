@@ -2,20 +2,29 @@ from django.urls import path
 from .views import (
     ApartmentBookingListCreateView,
     BookingDetailView,
+    CreateCheckoutSessionView,
+    stripe_webhook,
 )
 
 urlpatterns = [
-    # List & create bookings for an apartment
     path(
         "apartments/<int:apartment_id>/bookings/",
         ApartmentBookingListCreateView.as_view(),
         name="apartment-bookings"
     ),
-
-    # Retrieve, update, cancel a booking
     path(
-        "bookings/<int:id>/",
+        "bookings/<uuid:id>/",
         BookingDetailView.as_view(),
         name="booking-detail"
+    ),
+    path(
+        "bookings/<uuid:booking_id>/pay/",
+        CreateCheckoutSessionView.as_view(),
+        name="create-checkout-session"
+    ),
+    path(
+        "webhooks/stripe/",
+        stripe_webhook,
+        name="stripe-webhook"
     ),
 ]
