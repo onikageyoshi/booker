@@ -7,6 +7,7 @@ from drf_spectacular.views import (
 )
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.generic import TemplateView
 
 
 urlpatterns = [
@@ -16,9 +17,10 @@ urlpatterns = [
     path('api/schema/', SpectacularAPIView.as_view(), name="schema"),
     path('api/schema/swagger-ui', SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path('api/schema/redoc', SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
-    path('api/apartments/', include('apps.apartments.urls')),
-    path("api/reviews/", include("apps.reviews.urls")),
-    path("api/bookings/", include("apps.bookings.urls")),
+    path('apartments/', include('apps.apartments.urls')),
+    path("reviews/", include("apps.reviews.urls")),
+    path("bookings/", include("apps.bookings.urls")),
+
     
 ]
 

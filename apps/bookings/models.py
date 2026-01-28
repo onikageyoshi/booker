@@ -44,11 +44,15 @@ class Booking(models.Model):
         return self.status in ("pending", "confirmed")
 
     def save(self, *args, **kwargs):
-        # Automatically calculate total_price if not set
         if not self.total_price:
             try:
                 pricing = self.apartment.pricing
                 self.total_price = Decimal(pricing.price_per_night) * self.nights + Decimal(pricing.cleaning_fee) + Decimal(pricing.service_fee)
             except ApartmentPricing.DoesNotExist:
                 self.total_price = Decimal('0.00')
+
+        if self.provider_transaction_id:
+            self.payment_status = "paid"
+            self.status = "confirmed"
+
         super().save(*args, **kwargs)
