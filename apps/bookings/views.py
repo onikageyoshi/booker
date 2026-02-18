@@ -103,19 +103,18 @@ class CreateCheckoutSessionView(APIView):
 
     def post(self, request, booking_id):
         booking = get_object_or_404(Booking, id=booking_id, guest=request.user)
-        pricing = booking.apartment.pricing
-
+        
         if not booking.total_price or booking.total_price <= 0:
             return Response({"error": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
-
+        
         supported_currencies = ['gbp', 'usd', 'eur']
-        currency_code = pricing.currency.lower()
+        currency_code = booking.apartment.pricing.currency.lower()
 
         if currency_code not in supported_currencies:
-            return Response({"error": f"Currency {pricing.currency} not supported."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": f"Currency {booking.apartment.pricing.currency} not supported."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            unit_amount = int(booking.total_price * 100)
+            unit_amount = int(booking.total_price * 100)  # Stripe expects amount in cents
             checkout_session = stripe.checkout.Session.create(
                 payment_method_types=['card'],
                 line_items=[{
@@ -127,13 +126,14 @@ class CreateCheckoutSessionView(APIView):
                     'quantity': 1,
                 }],
                 mode='payment',
-                success_url=request.build_absolute_uri('/bookings/success/'),
+                success_url=request.build_absolute_uri(f'/bookings/success/'),
                 cancel_url=request.build_absolute_uri(f'/bookings/{booking.id}/'),
                 metadata={"booking_id": str(booking.id)}
             )
-            return Response({'url': checkout_session.url}, status=status.HTTP_200_OK)
+            return Response({"url": checkout_session.url}, status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @csrf_exempt
 def stripe_webhook(request):
@@ -142,7 +142,11 @@ def stripe_webhook(request):
     endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
 
     try:
-        event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
+        event = stripe.Webhook.construct_event(
+            payload=payload,
+            sig_header=sig_header,
+            secret=endpoint_secret
+        )
     except (ValueError, stripe.error.SignatureVerificationError):
         return HttpResponse(status=400)
 
@@ -157,8 +161,11 @@ def stripe_webhook(request):
                 booking.payment_status = "paid"
                 booking.status = "confirmed"
                 booking.provider_transaction_id = payment_intent_id
-                booking.save()
+                booking.save(update_fields=["payment_status", "status", "provider_transaction_id"])
             except Booking.DoesNotExist:
                 return HttpResponse(status=404)
 
     return HttpResponse(status=200)
+
+
+
