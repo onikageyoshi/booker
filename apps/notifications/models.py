@@ -30,7 +30,13 @@ class Notification(models.Model):
         related_name="related_admin_notifications",
     )
 
-    user = models.ForeignKey("user.User", on_delete=models.CASCADE, null=True, blank=True, related_name="notifications")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+        null=True,
+        blank=True,
+    )
 
     title = models.CharField(max_length=255)
     message = models.TextField()
