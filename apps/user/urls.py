@@ -1,5 +1,7 @@
-from django.urls import path, include
+from django.urls import include, path
+
 from rest_framework.routers import DefaultRouter
+
 from apps.user.views import (
     UserViewSet,
     LoginView,
@@ -7,18 +9,18 @@ from apps.user.views import (
     ChangePasswordView,
     EmailVerificationView,
     PasswordRequestResetView,
-    PasswordResetConfirmView
+    PasswordResetConfirmView,       
 )
 
 router = DefaultRouter()
-router.register(r'users', UserViewSet, basename='users')
+router.register(r'users', UserViewSet, basename='user')
 
 urlpatterns = [
-    path('', include(router.urls)),
-    path('login/', LoginView.as_view(), name='login'),
-    path('logout/', LogoutView.as_view(), name='logout'),
-    path('change-password/', ChangePasswordView.as_view(), name='change-password'),
-    path('otp/', EmailVerificationView.as_view(), name='otp'),
-    path('password-reset/', PasswordRequestResetView.as_view(), name='password-reset-request'),
-    path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
+    path("", include(router.urls)),
+    path("login/", LoginView.as_view(), name="login"),
+    path("logout/", LogoutView.as_view(), name="logout"),
+    path("change-password/", ChangePasswordView.as_view(), name="change_password"),
+    path("verify/email/", EmailVerificationView.as_view(), name="email_verification"),
+    path("password-reset/request/", PasswordRequestResetView.as_view(), name="password_reset_request"),
+    path("password-reset/confirm/", PasswordResetConfirmView.as_view(), name="password_reset_confirm"),
 ]
