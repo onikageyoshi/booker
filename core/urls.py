@@ -21,6 +21,7 @@ urlpatterns = [
     path("reviews/", include("apps.reviews.urls")),
     path("bookings/", include("apps.bookings.urls")),
 
+
     
 ]
 

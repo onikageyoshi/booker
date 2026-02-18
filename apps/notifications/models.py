@@ -1,3 +1,5 @@
+# apps/notifications/models.py
+
 from django.db import models
 import uuid
 from django.conf import settings
@@ -19,6 +21,7 @@ class Notification(models.Model):
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
     related_user = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -26,21 +29,21 @@ class Notification(models.Model):
         blank=True,
         related_name="related_admin_notifications",
     )
-    
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+        null=True,
+        blank=True,
+    )
+
     title = models.CharField(max_length=255)
     message = models.TextField()
 
-    notification_type = models.CharField(
-        max_length=50,
-        choices=NOTIFICATION_TYPES
-    )
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
+    target_audience = models.CharField(max_length=10, choices=TARGET_AUDIENCE)
 
-    target_audience = models.CharField(
-        max_length=10,
-        choices=TARGET_AUDIENCE
-    )
-
-    # Optional references
     apartment_id = models.UUIDField(null=True, blank=True)
     booking_id = models.UUIDField(null=True, blank=True)
 
@@ -51,6 +54,3 @@ class Notification(models.Model):
 
     def __str__(self):
         return self.title
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"
-    )
