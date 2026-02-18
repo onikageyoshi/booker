@@ -21,7 +21,6 @@ class Notification(models.Model):
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
     related_user = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -29,24 +28,20 @@ class Notification(models.Model):
         blank=True,
         related_name="related_admin_notifications",
     )
-
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="notifications",
+        on_delete=models.SET_NULL,  # <-- safe
         null=True,
         blank=True,
+        related_name="notifications",
     )
 
     title = models.CharField(max_length=255)
     message = models.TextField()
-
     notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
     target_audience = models.CharField(max_length=10, choices=TARGET_AUDIENCE)
-
     apartment_id = models.UUIDField(null=True, blank=True)
     booking_id = models.UUIDField(null=True, blank=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
