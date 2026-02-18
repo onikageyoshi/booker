@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.5; color: #333; }
+.container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 8px; }
+h1 { color: #2c3e50; }
+.details { background: #f8f8f8; padding: 10px; border-radius: 6px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>Apartment Now Available 🏡</h1>
+    <p>Hello {{ user.first_name }},</p>
+    <p>The apartment "<strong>{{ apartment.title }}</strong>" is available on {{ availability.date }}!</p>
+    <div class="details">
+        <p><strong>Property Type:</strong> {{ apartment.property_type|title }}</p>
+        <p><strong>Total Bedrooms:</strong> {{ apartment.total_bedrooms }}</p>
+        <p><strong>Total Bathrooms:</strong> {{ apartment.total_bathrooms }}</p>
+        <p><strong>Max Guests:</strong> {{ apartment.max_guests }}</p>
+        <p><strong>Description:</strong> {{ apartment.description }}</p>
+    </div>
+    <p>Book now to secure your stay!</p>
+    <p>— Apartment Booking Team</p>
+</div>
+</body>
+</html>
