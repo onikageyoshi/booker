@@ -22,3 +22,7 @@ echo "Running migrations..."
 python manage.py migrate
 
 echo "Build finished successfully!"
+
+# Start the Django app with Gunicorn
+echo "Starting Gunicorn..."
+exec gunicorn core.wsgi:application --bind 0.0.0.0:$PORT
