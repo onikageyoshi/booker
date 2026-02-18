@@ -11,8 +11,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-secret-key-for-dev")
 DEBUG = os.getenv("DEBUG", "False") == "True"
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "booker-6jxi.onrender.com", ".render.com"]
-CSRF_TRUSTED_ORIGINS = ["https://booker-6jxi.onrender.com"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "booker-61as.onrender.com", ".render.com"]
+CSRF_TRUSTED_ORIGINS = ["https://booker-61as.onrender.com", "https://*.render.com"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
