@@ -3,8 +3,6 @@ from pathlib import Path
 from datetime import timedelta
 import cloudinary
 
-import dj_database_url
-import dj_database_url
 from dotenv import load_dotenv  
 
 load_dotenv() 
@@ -14,7 +12,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-secret-key-for-dev")
 DEBUG = True
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "booker-61as.onrender.com", ".render.com"]
+CSRF_TRUSTED_ORIGINS = ["https://booker-61as.onrender.com", "https://*.render.com"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -80,27 +79,19 @@ WSGI_APPLICATION = "core.wsgi.application"
 #     }
 # }
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.sqlite3"),
-#         "NAME": os.getenv("DB_NAME", BASE_DIR / "db.sqlite3"),
-#         "USER": os.getenv("DB_USER", ""),
-#         "PASSWORD": os.getenv("DB_PASSWORD", ""),
-#         "HOST": os.getenv("DB_HOST", ""),
-#         "PORT": os.getenv("DB_PORT", ""),
-#         "OPTIONS": {
-#             "sslmode": os.getenv("DB_SSLMODE", "prefer"),
-#             "channel_binding": os.getenv("DB_CHANNEL_BINDING", "prefer"),
-#         } if os.getenv("DB_ENGINE") == "django.db.backends.postgresql" else {},
-#     }
-# }
-
 DATABASES = {
-    "default": dj_database_url.parse(
-        os.environ.get("DATABASE_URL"),
-        conn_max_age=600,
-        ssl_require=True,
-    )
+    "default": {
+        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.sqlite3"),
+        "NAME": os.getenv("DB_NAME", BASE_DIR / "db.sqlite3"),
+        "USER": os.getenv("DB_USER", ""),
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),
+        "HOST": os.getenv("DB_HOST", ""),
+        "PORT": os.getenv("DB_PORT", ""),
+        "OPTIONS": {
+            "sslmode": os.getenv("DB_SSLMODE", "prefer"),
+            "channel_binding": os.getenv("DB_CHANNEL_BINDING", "prefer"),
+        } if os.getenv("DB_ENGINE") == "django.db.backends.postgresql" else {},
+    }
 }
 
 
@@ -202,19 +193,51 @@ SESSION_CACHE_ALIAS = "default"
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
 STRIPE_CURRENCY = os.getenv("STRIPE_CURRENCY", "usd")
+import os
+from django.core.exceptions import ImproperlyConfigured
 
+def get_env_variable(var_name):
+    try:
+        return os.environ[var_name]
+    except KeyError:
+        # This makes it fail immediately if the variable is missing
+        error_msg = f"Set the {var_name} environment variable"
+        raise ImproperlyConfigured(error_msg)
+
+# Production SMTP Settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
 
-EMAIL_HOST = os.environ.get("EMAIL_HOST")
-EMAIL_PORT = int(os.environ.get("EMAIL_PORT", 587))
-EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+# These will throw an error locally if not set in your OS environment
+EMAIL_HOST_USER = get_env_variable('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = get_env_variable('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+# Security: Don't let connections hang forever in production
+EMAIL_TIMEOUT = 10
 
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
+from django.core.mail import send_mail
+import os
+
+# This test ensures the connection to Gmail's SMTP is active
+try:
+    send_mail(
+        'Production Deploy Test - Live',
+        'Backend connection successful. Deployment is live.',
+        os.environ.get('EMAIL_HOST_USER'), 
+        ['davidonyekachi29@gmail.com'], # Sending to yourself to verify
+        fail_silently=False,
+    )
+    print("✅ SUCCESS: Email sent from production backend!")
+except Exception as e:
+    print(f"❌ DEPLOYMENT ERROR: {e}")
+    print("Check if Port 587 is open on your host or if the App Password is correct.")
 
 
+    
+DEFAULT_FROM_EMAIL = os.getenv('EMAIL_HOST_USER', 'webmaster@localhost')
 cloudinary.config(
     cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
     api_key=os.getenv("CLOUDINARY_API_KEY"),

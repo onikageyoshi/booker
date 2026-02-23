@@ -1,17 +1,12 @@
-#!/bin/bash
-
-echo "🚀 Starting Railway Build..."
-
-# Upgrade pip
-pip install --upgrade pip
+set -o errexit
 
 # Install dependencies
+pip install --upgrade pip
 pip install -r requirements.txt
 
-# Run migrations
-python manage.py migrate --noinput
+# Run database migrations
+python manage.py migrate
 
 # Collect static files
 python manage.py collectstatic --noinput
-gunicorn core.wsgi:application --bind 0.0.0.0:8000
-echo "✅ Build completed successfully!"
+
