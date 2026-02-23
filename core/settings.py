@@ -3,6 +3,8 @@ from pathlib import Path
 from datetime import timedelta
 import cloudinary
 
+import dj_database_url
+import dj_database_url
 from dotenv import load_dotenv  
 
 load_dotenv() 
@@ -12,8 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-secret-key-for-dev")
 DEBUG = True
-ALLOWED_HOSTS = ['.replit.dev', '.repl.co']
-CSRF_TRUSTED_ORIGINS = ['https://*.replit.dev', 'https://*.repl.co']
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -79,19 +80,27 @@ WSGI_APPLICATION = "core.wsgi.application"
 #     }
 # }
 
+# DATABASES = {
+#     "default": {
+#         "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.sqlite3"),
+#         "NAME": os.getenv("DB_NAME", BASE_DIR / "db.sqlite3"),
+#         "USER": os.getenv("DB_USER", ""),
+#         "PASSWORD": os.getenv("DB_PASSWORD", ""),
+#         "HOST": os.getenv("DB_HOST", ""),
+#         "PORT": os.getenv("DB_PORT", ""),
+#         "OPTIONS": {
+#             "sslmode": os.getenv("DB_SSLMODE", "prefer"),
+#             "channel_binding": os.getenv("DB_CHANNEL_BINDING", "prefer"),
+#         } if os.getenv("DB_ENGINE") == "django.db.backends.postgresql" else {},
+#     }
+# }
+
 DATABASES = {
-    "default": {
-        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.sqlite3"),
-        "NAME": os.getenv("DB_NAME", BASE_DIR / "db.sqlite3"),
-        "USER": os.getenv("DB_USER", ""),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", ""),
-        "PORT": os.getenv("DB_PORT", ""),
-        "OPTIONS": {
-            "sslmode": os.getenv("DB_SSLMODE", "prefer"),
-            "channel_binding": os.getenv("DB_CHANNEL_BINDING", "prefer"),
-        } if os.getenv("DB_ENGINE") == "django.db.backends.postgresql" else {},
-    }
+    "default": dj_database_url.parse(
+        os.environ.get("DATABASE_URL"),
+        conn_max_age=600,
+        ssl_require=True,
+    )
 }
 
 
