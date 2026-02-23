@@ -23,14 +23,14 @@ class Notification(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     related_user = models.ForeignKey(
         User,
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="related_admin_notifications",
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,  # <-- safe
+        on_delete=models.CASCADE,  # <-- safe
         null=True,
         blank=True,
         related_name="notifications",
