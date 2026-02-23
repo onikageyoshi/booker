@@ -1,0 +1,32 @@
+app = "your-app-name"
+primary_region = "iad"  # You can change region (e.g., lhr for London)
+
+[build]
+
+[env]
+  PORT = "8000"
+  DJANGO_SETTINGS_MODULE = "core.settings"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8000
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
