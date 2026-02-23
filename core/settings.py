@@ -218,23 +218,6 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 # Security: Don't let connections hang forever in production
 EMAIL_TIMEOUT = 10
 
-from django.core.mail import send_mail
-import os
-
-# This test ensures the connection to Gmail's SMTP is active
-try:
-    send_mail(
-        'Production Deploy Test - Live',
-        'Backend connection successful. Deployment is live.',
-        os.environ.get('EMAIL_HOST_USER'), 
-        ['davidonyekachi29@gmail.com'], # Sending to yourself to verify
-        fail_silently=False,
-    )
-    print("✅ SUCCESS: Email sent from production backend!")
-except Exception as e:
-    print(f"❌ DEPLOYMENT ERROR: {e}")
-    print("Check if Port 587 is open on your host or if the App Password is correct.")
-
 
     
 DEFAULT_FROM_EMAIL = os.getenv('EMAIL_HOST_USER', 'webmaster@localhost')
