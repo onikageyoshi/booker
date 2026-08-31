@@ -12,8 +12,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "booker-61as.onrender.com", "django-app-production-0cb9.up.railway.app"]
-CSRF_TRUSTED_ORIGINS = ["https://booker-61as.onrender.com"]
+
+# ALLOWED_HOSTS: comma-separated in env, falls back to common dev values
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.getenv(
+        "ALLOWED_HOSTS",
+        "localhost,127.0.0.1,booker-61as.onrender.com,django-app-production-0cb9.up.railway.app",
+    ).split(",")
+    if h.strip()
+]
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.getenv("CSRF_TRUSTED_ORIGINS", "https://booker-61as.onrender.com").split(",")
+    if o.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -89,8 +102,11 @@ DATABASES = {
         "HOST": os.getenv("DB_HOST", ""),
         "PORT": os.getenv("DB_PORT", ""),
         "OPTIONS": {
-            "sslmode": os.getenv("DB_SSLMODE", "require"),
-            "channel_binding": os.getenv("DB_CHANNEL_BINDING", "require"),
+            k: v
+            for k, v in {
+                "sslmode": os.getenv("DB_SSLMODE"),
+            }.items()
+            if v
         } if os.getenv("DB_ENGINE") == "django.db.backends.postgresql" else {},
     }
 }

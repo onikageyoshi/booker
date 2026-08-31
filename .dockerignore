@@ -1,0 +1,70 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.egg-info
+*.egg
+dist
+build
+eggs
+*.whl
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDEs
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Environment and secrets
+.env
+.env.*
+*.env
+
+# Django
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+static/
+
+# Tests and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker (avoid recursive builds)
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Documentation
+README.md
+SECURITY.md
+
+# CI/CD
+.github/
+
+# Misc
+.mypy_cache/
+.pyre/
+pylint.log
+.ropeproject/
+celerybeat-schedule
