@@ -1,4 +1,7 @@
+import os
+
 from rest_framework import serializers
+from PIL import Image, UnidentifiedImageError
 from drf_spectacular.utils import extend_schema_field
 
 from .models import (
@@ -34,6 +37,7 @@ class ApartmentPricingSerializer(serializers.ModelSerializer):
             'currency'
         ]
 
+
 class ApartmentAddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = ApartmentAddress
@@ -44,6 +48,7 @@ class ApartmentAvailabilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = ApartmentAvailability
         fields = ['date', 'is_available']
+
 
 class ApartmentSerializer(serializers.ModelSerializer):
     pricing = ApartmentPricingSerializer(read_only=True)
@@ -81,7 +86,32 @@ class ApartmentSerializer(serializers.ModelSerializer):
     def get_apartment_amenities(self, obj):
         return AmenitySerializer(obj.amenities.all(), many=True).data
 
+    MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MB
+    ALLOWED_IMAGE_TYPES = {'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff'}
+
     def validate_image(self, value):
         if hasattr(value, 'content_type') and not value.content_type.startswith('image/'):
             raise serializers.ValidationError("Only image files are allowed.")
+
+        if hasattr(value, 'size') and value.size > self.MAX_UPLOAD_SIZE:
+            raise serializers.ValidationError(
+                f"Image file too large. Maximum allowed size is {self.MAX_UPLOAD_SIZE // (1024 * 1024)} MB."
+            )
+
+        try:
+            img = Image.open(value)
+            img.verify()
+            value.seek(0)
+            img = Image.open(value)
+            fmt = img.format
+            if fmt and fmt.lower() not in self.ALLOWED_IMAGE_TYPES:
+                raise serializers.ValidationError(
+                    f"Unsupported image format '{fmt}'. Allowed: {', '.join(sorted(self.ALLOWED_IMAGE_TYPES))}."
+                )
+        except (UnidentifiedImageError, IOError, SyntaxError):
+            raise serializers.ValidationError("Invalid image file.")
+        finally:
+            if hasattr(value, 'seek'):
+                value.seek(0)
+
         return value

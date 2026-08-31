@@ -1,5 +1,6 @@
 from rest_framework import generics, permissions, serializers
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 
 from apps.apartments.models import Apartment
@@ -34,7 +35,7 @@ class ReviewListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         apartment_id = self.kwargs["apartment_id"]
-        apartment = Apartment.objects.get(id=apartment_id)
+        apartment = get_object_or_404(Apartment, id=apartment_id)
 
         # Prevent duplicate review by same user
         if Review.objects.filter(user=self.request.user, apartment=apartment).exists():

@@ -1,9 +1,12 @@
 from rest_framework import serializers
 
 from django.contrib.auth import get_user_model, authenticate
+from django.contrib.auth.password_validation import validate_password
 
 from apps.base.choices import StatusChoices, UserTypeChoices
-from apps.base.account_utils import complete_password_reset, email_validator, get_tokens_for_user, initiate_password_reset, send_otp_email, set_user_otp
+from apps.base.account_utils import complete_password_reset, email_validator, get_tokens_for_user, hash_otp, initiate_password_reset, send_otp_email, set_user_otp
+
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -20,10 +23,9 @@ class UserSerializer(serializers.ModelSerializer):
         
 class UserDetailSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source="get_full_name", read_only=True)
-    meta = serializers.JSONField(read_only=True)  # If meta is a JSONField on User model
 
     class Meta(UserSerializer.Meta):
-        fields = UserSerializer.Meta.fields + ("meta",)
+        fields = UserSerializer.Meta.fields
         
         
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -49,8 +51,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if data['password'] != data['confirm_password']:
             raise serializers.ValidationError({"password_confirm": "Passwords do not match."})
-        if len(data['password']) < 8:
-            raise serializers.ValidationError("Passwords must be atleast 8 characters.")        
+        validate_password(data['password'])
         return data
         
     def create(self, validated_data):
@@ -83,13 +84,16 @@ class ChangePasswordSerializer(serializers.Serializer):
     confirm_password = serializers.CharField(write_only=True, style={"input": "password"})
     
     def validate(self, data):
+        if not self.context.get('request') or not self.context['request'].user:
+            raise serializers.ValidationError({"old_password": "Authentication context required."})
+        user = self.context['request'].user
+        if not user.check_password(data['old_password']):
+            raise serializers.ValidationError({"old_password": "Current password is incorrect."})
+        if data['new_password'] == data['old_password']:
+            raise serializers.ValidationError({"new_password": "New password must differ from current password."})
         if data['new_password'] != data['confirm_password']:
             raise serializers.ValidationError({"password_confirm": "Passwords do not match."})
-        if len(data['new_password']) < 8:
-            raise serializers.ValidationError("Passwords must be at least 8 characters.")
-        
-        if not data['new_password'].isalnum():
-            raise serializers.ValidationError("Password must contain both letters and numbers.")
+        validate_password(data['new_password'])
         return data
     
     def save(self, user):
@@ -108,47 +112,35 @@ class LoginSerializer(serializers.Serializer):
         return value.lower()
     
     def validate(self, data):
-        """Main validation method that handles authentication and user status checks"""
+        """Authenticate first, then check account status.
+        
+        Always returns a generic error on authentication failure to prevent
+        user enumeration. Account status checks run only after successful
+        authentication.
+        """
         email = data.get('email', "")
         password = data.get('password', "")
         
-        # Try to authenticate the user
         user = authenticate(request=self.context.get('request'), email=email, password=password)
         
-        # If authentication failed, check if user exists and their status
         if user is None:
-            try:
-                user_obj = User.objects.get(email=email)
-                # Check user status even if authentication failed
-                self.check_user_status(user_obj)
-                # If we reach here, the password was wrong but account exists and is active
-                raise serializers.ValidationError({"detail": "Invalid credentials."})
-            except User.DoesNotExist:
-                raise serializers.ValidationError({"detail": "Invalid credentials."})
+            raise serializers.ValidationError({"detail": "Invalid credentials."})
         
-        # If authentication succeeded, check user status
-        self.check_user_status(user)
+        # Post-auth status checks — safe because authenticate() already proved identity
+        if not user.otp_verified:
+            raise serializers.ValidationError({"detail": "Email not verified. Please verify your email before logging in."})
+        if user.status == StatusChoices.PENDING:
+            raise serializers.ValidationError({"detail": "User account is pending approval."})
+        if user.status == StatusChoices.DELETED:
+            raise serializers.ValidationError({"detail": "User account has been deleted."})
+        if user.status in [StatusChoices.BLOCKED, StatusChoices.SUSPENDED]:
+            raise serializers.ValidationError({"detail": "User account is blocked or suspended."})
         
-        # Generate tokens for the user
         tokens = get_tokens_for_user(user)
         return {
             "user": user,
             "tokens": tokens
         }
-    
-    def check_user_status(self, user):
-        """Helper method to check user status and raise appropriate errors"""
-        if not user.is_active:
-            raise serializers.ValidationError({"detail": "User account is inactive."})
-        
-        if user.status == StatusChoices.PENDING:
-            raise serializers.ValidationError({"detail": "User account is pending approval."})
-        
-        if user.status == StatusChoices.DELETED:
-            raise serializers.ValidationError({"detail": "User account has been deleted."})
-        
-        if user.status in [StatusChoices.BLOCKED, StatusChoices.SUSPENDED]:
-            raise serializers.ValidationError({"detail": "User account is blocked or suspended."})
 
 
 class OTPVerificationSerializer(serializers.Serializer):
@@ -161,21 +153,30 @@ class OTPVerificationSerializer(serializers.Serializer):
         return value
     
     def validate(self, data):
+        import hmac as _hmac
         otp = data.get('otp')
         email = data.get('email')
         
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            raise serializers.ValidationError({"detail": "User not found."})
+            raise serializers.ValidationError({"detail": "Invalid or expired OTP."})
         
-        if not user.otp or user.otp != otp:
+        if not user.otp:
+            raise serializers.ValidationError({"detail": "Invalid or expired OTP."})
+        
+        hashed_input = hash_otp(otp)
+        if not _hmac.compare_digest(user.otp, hashed_input):
             raise serializers.ValidationError({"detail": "Invalid or expired OTP."})
         
         if user.otp_verified:
             raise serializers.ValidationError({"detail": "OTP already verified."})
         
-        # Add user to validated data so it can be accessed in the view
+        if user.otp_created_at:
+            expiry_time = user.otp_created_at + timezone.timedelta(minutes=15)
+            if timezone.now() > expiry_time:
+                raise serializers.ValidationError({"detail": "OTP has expired. Please request a new one."})
+        
         data['user'] = user
         return data
     
@@ -210,9 +211,12 @@ class PasswordResetCompleteSerializer(serializers.Serializer):
     def validate(self, data):
         if data['new_password'] != data['confirm_password']:
             raise serializers.ValidationError({"password_confirm": "Passwords do not match."})
-        if len(data['new_password']) < 8:
-            raise serializers.ValidationError("Passwords must be at least 8 characters.")
-        
+        email = data.get('email', '')
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"detail": "User not found."})
+        validate_password(data['new_password'], user=user)
         return data
     
     def save(self):

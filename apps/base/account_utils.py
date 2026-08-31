@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import re
 import secrets
 import string
@@ -63,37 +65,35 @@ def generate_otp(length: int = 6) -> str:
     """
     return "".join(secrets.choice(string.digits) for _ in range(length))
 
+def hash_otp(otp: str) -> str:
+    """
+    Hash an OTP value using SHA-256 for secure storage.
+
+    Args:
+        otp (str): The plaintext OTP to hash.
+
+    Returns:
+        str: The hex digest of the SHA-256 hash.
+    """
+    return hashlib.sha256(otp.encode()).hexdigest()
+
+
 def set_user_otp(user, length: int = 6) -> str:
     """
     Generate and set OTP for a user with timestamp and verification status.
-    
-    Creates a new OTP for the user, sets the creation timestamp, marks as unverified,
-    and saves the user instance with only the necessary field updates.
-    
+
+    The OTP is stored as a SHA-256 hash in the database. The plaintext OTP
+    is returned so it can be sent to the user via email.
+
     Args:
         user: Django User model instance to set OTP for.
         length (int, optional): Length of the OTP to generate. Defaults to 6.
-        
+
     Returns:
-        str: The generated OTP that was set for the user.
-        
-    Side Effects:
-        - Sets user.otp to the generated OTP
-        - Sets user.otp_created_at to current timestamp
-        - Sets user.otp_verified to False
-        - Saves user instance with updated fields only
-        
-    Example:
-        >>> user = User.objects.get(id=1)
-        >>> otp = set_user_otp(user)
-        >>> print(f"OTP set: {otp}")
-        OTP set: 123456
-        
-    Note:
-        Only updates specific fields to optimize database performance.
+        str: The generated plaintext OTP.
     """
     otp = generate_otp(length)
-    user.otp = otp
+    user.otp = hash_otp(otp)
     user.otp_created_at = timezone.now()
     user.otp_verified = False
     user.save(update_fields=["otp", "otp_created_at", "otp_verified"])
@@ -130,54 +130,42 @@ def clear_user_otp(user):
     user.save(update_fields=["otp", "otp_created_at"])
 
 
-def verfiy_user_otp(user, otp: str) -> bool:
+def verify_user_otp(user, otp: str) -> bool:
     """
-    Verify user-provided OTP against stored OTP with expiry validation.
-    
-    Validates that the provided OTP matches the user's stored OTP and that
-    the OTP hasn't expired (15-minute window from creation).
-    
+    Verify user-provided OTP against stored hash using constant-time comparison.
+
+    Validates that the provided OTP matches the user's stored hashed OTP and
+    that the OTP hasn't expired (15-minute window from creation).
+
     Args:
         user: Django User model instance with OTP data.
-        otp (str): The OTP string to verify against stored OTP.
-        
+        otp (str): The plaintext OTP string to verify.
+
     Returns:
         bool: True if OTP is valid and not expired, False otherwise.
-        
-    Validation Process:
-        1. Checks if user has an OTP set
-        2. Compares provided OTP with stored OTP
-        3. Validates OTP creation timestamp exists
-        4. Checks if OTP is within 15-minute expiry window
-        5. Sets otp_verified to True if validation passes
-        
-    Side Effects:
-        - Sets user.otp_verified to True on successful verification
-        - Saves user instance with updated otp_verified field
-        
-    Example:
-        >>> is_valid = verfiy_user_otp(user, "123456")
-        >>> if is_valid:
-        ...     print("OTP verified successfully")
-        ... else:
-        ...     print("Invalid or expired OTP")
-        
-    Note:
-        OTP expires 15 minutes after otp_created_at timestamp.
     """
-    if not user.otp or user.otp != otp:
+    if not user.otp:
         return False
-    
+
+    hashed_input = hash_otp(otp)
+    if not hmac.compare_digest(user.otp, hashed_input):
+        return False
+
     if not user.otp_created_at:
         return False
-    
+
     expiry_time = user.otp_created_at + timezone.timedelta(minutes=15)
     if timezone.now() > expiry_time:
         return False
-    
+
     user.otp_verified = True
     user.save(update_fields=["otp_verified"])
     return True
+
+
+def verfiy_user_otp(user, otp: str) -> bool:
+    """Legacy alias for verify_user_otp — kept for backward compatibility."""
+    return verify_user_otp(user, otp)
 
 def send_otp_email(user_id: int, otp: str, purpose: str):
     try:
@@ -185,29 +173,29 @@ def send_otp_email(user_id: int, otp: str, purpose: str):
             user = user_id
         else:
             user = User.objects.get(id=user_id)
-            
+
         subject = f"Your OTP for {purpose}"
         context = {
             "user": user,
             "otp": otp,
             "purpose": purpose,
-            "expiry": "5 minutes"    
+            "expiry": "15 minutes",
         }
         template_path = "emails/otp_email.html"
         html_message = render_to_string(template_path, context)
-        
-        # ✅ Correct way: Import and use EmailMessage class
+
         from django.core.mail import EmailMessage
-        
+
         email_message = EmailMessage(
             subject=subject,
             body=html_message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[user.email]
         )
-        email_message.content_subtype = "html"  # Set content type to HTML
+        email_message.content_subtype = "html"
         email_message.send()
-        
+        return True
+
     except User.DoesNotExist:
         raise ValueError("User with the given ID does not exist.")
     except Exception as e:

@@ -1,3 +1,5 @@
+import logging
+
 import stripe
 from django.conf import settings
 from django.http import HttpResponse
@@ -7,11 +9,14 @@ from django.db import transaction
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from drf_yasg.utils import swagger_auto_schema
 
 from apps.apartments.models import Apartment
 from apps.bookings.models import Booking
 from .serializers import BookingSerializer
+
+logger = logging.getLogger(__name__)
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -49,14 +54,19 @@ class ApartmentBookingListCreateView(generics.ListCreateAPIView):
         if not request.user.is_authenticated:
             return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
 
-        apartment = get_object_or_404(Apartment, id=self.kwargs.get("apartment_id"))
+        apartment_id = self.kwargs.get("apartment_id")
+        apartment = Apartment.objects.select_for_update().get(id=apartment_id)
+
         if not apartment.is_active:
             return Response({"detail": "Apartment is not available for booking."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if apartment.host == request.user:
+            return Response({"detail": "Hosts cannot book their own apartment."}, status=status.HTTP_400_BAD_REQUEST)
 
         return super().post(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        apartment = get_object_or_404(Apartment, id=self.kwargs.get("apartment_id"))
+        apartment = Apartment.objects.select_for_update().get(id=self.kwargs.get("apartment_id"))
         serializer.save(apartment=apartment, guest=self.request.user)
 
 class BookingDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -126,17 +136,21 @@ class CreateCheckoutSessionView(APIView):
                     'quantity': 1,
                 }],
                 mode='payment',
-                success_url=request.build_absolute_uri(f'/bookings/success/'),
+                success_url=request.build_absolute_uri('/payment-success/'),
                 cancel_url=request.build_absolute_uri(f'/bookings/{booking.id}/'),
                 metadata={"booking_id": str(booking.id)}
             )
             return Response({"url": checkout_session.url}, status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception("Stripe checkout session creation failed for booking %s", booking.id)
+            return Response({"error": "Payment provider error. Please try again."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @csrf_exempt
 def stripe_webhook(request):
+    if not settings.STRIPE_WEBHOOK_SECRET:
+        return HttpResponse("STRIPE_WEBHOOK_SECRET is not configured.", status=500)
+    
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
     endpoint_secret = settings.STRIPE_WEBHOOK_SECRET

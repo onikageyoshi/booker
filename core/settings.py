@@ -10,10 +10,10 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-secret-key-for-dev")
-DEBUG = True
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "booker-61as.onrender.com", ".render.com", "django-app-production-0cb9.up.railway.app"]
-CSRF_TRUSTED_ORIGINS = ["https://booker-61as.onrender.com", "https://*.render.com"]
+SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "booker-61as.onrender.com", "django-app-production-0cb9.up.railway.app"]
+CSRF_TRUSTED_ORIGINS = ["https://booker-61as.onrender.com"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
 
 
+
     "rest_framework",
     "corsheaders",
     "drf_spectacular",
@@ -32,13 +33,13 @@ INSTALLED_APPS = [
     "cloudinary_storage",
     "django_ratelimit",
 
+
     "apps.user",
     "apps.apartments",
     "apps.bookings",
     "apps.reviews",
     "apps.notifications",
-    'sslserver',
-    
+    "rest_framework_simplejwt.token_blacklist",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -88,8 +89,8 @@ DATABASES = {
         "HOST": os.getenv("DB_HOST", ""),
         "PORT": os.getenv("DB_PORT", ""),
         "OPTIONS": {
-            "sslmode": os.getenv("DB_SSLMODE", "prefer"),
-            "channel_binding": os.getenv("DB_CHANNEL_BINDING", "prefer"),
+            "sslmode": os.getenv("DB_SSLMODE", "require"),
+            "channel_binding": os.getenv("DB_CHANNEL_BINDING", "require"),
         } if os.getenv("DB_ENGINE") == "django.db.backends.postgresql" else {},
     }
 }
@@ -119,12 +120,15 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
+        "apps.user.authentication.CustomJWTAuthentication",
     ),
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
@@ -133,18 +137,20 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "10/minute",
         "user": "1000/day",
         "otp": "5/minute",
+        "login": "5/minute",
     },
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": False,
+    "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
@@ -165,26 +171,21 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
-REDIS_URL = os.getenv("REDIS_URL", "")
-if REDIS_URL:
-    CACHES = {
-        "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": REDIS_URL,
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                "IGNORE_EXCEPTIONS": True,
-            },
-        }
-    }
-else:
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        }
-    }
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "cache_table",
+    },
+    "ratelimit": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    },
+}
 
-RATELIMIT_USE_CACHE = "default"
+RATELIMIT_USE_CACHE = "ratelimit"
 RATELIMIT_ENABLE = True
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
@@ -193,18 +194,23 @@ SESSION_CACHE_ALIAS = "default"
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
 STRIPE_CURRENCY = os.getenv("STRIPE_CURRENCY", "usd")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+if not STRIPE_WEBHOOK_SECRET:
+    import warnings
+    warnings.warn(
+        "STRIPE_WEBHOOK_SECRET is not set. Stripe webhooks will be disabled.",
+        UserWarning,
+        stacklevel=1,
+    )
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False  # Don't use both TLS and SSL
-
-
-    
-DEFAULT_FROM_EMAIL = os.getenv('EMAIL_HOST_USER', 'webmaster@localhost')
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "webmaster@localhost")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() == "true"
 cloudinary.config(
     cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
     api_key=os.getenv("CLOUDINARY_API_KEY"),
